@@ -1,6 +1,7 @@
 # Phone Book
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-+0LX0Gw/SFQJ+0uMg8bYtX/k5+Ohr6nziR4kOa4+Kbd8ZRDkJBW8A0ZI7r+K8BxR5wPS4m8GUH1Gq4g0qj3hNQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-Phone Book es una aplicación web simple para gestionar contactos. La aplicación está construida con Node.js, Express y React.
+Phone Book es una aplicación web simple para gestionar contactos.
 
 ## Tecnologías utilizadas
 
@@ -13,7 +14,7 @@ Phone Book es una aplicación web simple para gestionar contactos. La aplicació
 
 La aplicación está desplegada en Vercel y se puede acceder a ella en la siguiente URL:
 
-https://tu-url-en-vercel.com
+https://phone-book-five.vercel.app/
 
 ## Funcionalidades
 
