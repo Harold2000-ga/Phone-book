@@ -1,94 +1,149 @@
 const express = require('express')
+const mongoose = require('mongoose')
+require('dotenv').config()
 const cors = require('cors')
 const path = require('path')
+const connection = require('./database/connection')
 var morgan = require('morgan')
 
+//Model import
+const Contact = require('./model/contacts')
+//Create server
 const app = express()
-
 const PORT = process.env.PORT || 3001
 
-let contact = [
-    {
-        id: 1,
-        name: 'Harold',
-        number: '+5354382930',
-    },
-    {
-        id: 2,
-        name: 'Liana',
-        number: '+5354327507',
-    },
-    {
-        id: 3,
-        name: 'Yoxi',
-        number: '+5352442313',
-    },
-]
+//Connection to database
+connection()
+
 app.use(morgan('tiny'))
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 app.use(cors())
 app.use(express.static(path.join(__dirname, '..', 'client', 'dist')))
 /* Home  */
 app.get('/', (req, res) => {
-    res.send('<h1>Hello</h1>')
+    return res.send('<h1>Hello</h1>')
 })
-/* All persons */
+//List all persons
 app.get('/api/persons', (req, res) => {
-    res.status(200).json(contact)
+    Contact.find({})
+        .sort({ createdAT: -1 })
+        .then(contact => {
+            res.status(200).json(contact)
+        })
 })
-/* Info */
-app.get('/info', (req, res) => {
-    const date = new Date()
-    res.send(
-        `<p>Phone-book has info for ${contact.length} people</p><p>${date}</p>`
-    )
-})
-/* Get person */
+//Get person
 app.get('/api/persons/:id', (req, res) => {
-    let id = parseInt(req.params.id)
-    const person = contact.find(item => item.id == id)
-    person
-        ? res.send(person)
-        : res.status(404).send({ error: 'Person not found' })
+    const id = new mongoose.Types.ObjectId(req.params.id)
+    Contact.findById(id)
+        .then(person => {
+            if (!person) {
+                return res.status(404).send({
+                    status: 'Error',
+                    message: 'Person no found',
+                })
+            }
+            return res.status(200).send({
+                status: 'Success',
+                person,
+            })
+        })
+        .catch(error => {
+            return res.status(400).send({
+                status: 'Error',
+                message: 'Bad request',
+            })
+        })
 })
-/* Delete person */
+//Delete person
 app.delete('/api/persons/:id', (req, res) => {
-    let id = parseInt(req.params.id)
-    contact = contact.filter(item => item.id !== id)
-
-    res.status(204).end()
+    let id = req.params.id
+    Contact.findByIdAndDelete(id)
+        .then(response => {
+            return res.status(204).send({
+                status: 'Success',
+                response,
+            })
+        })
+        .catch(error => {
+            return res.status(404).send({
+                status: 'Error',
+                message: 'Error in find',
+            })
+        })
 })
-const getId = () => {
-    /* Post person */
-    let maxId = 0
-    contact.length > 0
-        ? (maxId = Math.max(...contact.map(item => item.id)) + 1)
-        : (maxId.id = 0)
-    return maxId
-}
+//Post person to list
 app.post('/api/persons/', (req, res) => {
-    let user = req.body
-    if (user.name === '') {
-        res.status(400).json({
+    //Get body params
+    let params = req.body
+    //Validate if is not empty
+    if (params.name === '' || params.number === '') {
+        return res.status(400).json({
             status: 'Error',
-            message: 'The name cannot be empty',
+            message: 'The name or number cannot be empty',
         })
     }
-    const filterName = contact.find(item => item.name === user.name)
-    if (!filterName) {
-        user.id = getId()
-        contact = [...contact, user]
-        res.status(200).json({
-            status: 'Success',
-            message: 'Has been post',
-            contact,
+    //Validate if is unique
+    Contact.find({ name: params.name }).then(users => {
+        if (users.length > 0) {
+            return res.status(422).json({
+                status: 'Error',
+                message: 'The name must be unique',
+            })
+        }
+        //Create user to save
+        const newUser = new Contact({
+            name: params.name,
+            number: params.number,
         })
-    }
-    res.status(422).json({
-        status: 'Error',
-        message: 'The name must be unique',
+        //Save user
+        newUser.save().then(() => {
+            return res.status(200).json({
+                status: 'Success',
+                message: 'User add',
+                user: newUser,
+            })
+        })
     })
 })
+//Update person
+app.put('/api/persons/:id', (req, res) => {
+    //Get id and new data
+    const id = req.params.id
+    const newContact = req.body
+    //Validate data
+    if (newContact.name === '' || newContact.number === '') {
+        return res.status(400).send({
+            status: 'Error',
+            message: 'The data cannot be empty',
+        })
+    }
+    //Search in database by duplicate
+    Contact.find({ name: newContact.name }).then(contacts => {
+        if (contacts.length > 0) {
+            return res.status(400).send({
+                status: 'Error',
+                message: 'The name must be unique',
+            })
+        }
+        //Update
+        Contact.findByIdAndUpdate(id, newContact, { new: true })
+            .then(Updated => {
+                return res.status(200).send({
+                    status: 'Success',
+                    Updated,
+                })
+            })
+            .catch(error => {
+                console.log(error)
+                return res.status(400).send({
+                    status: 'Error',
+                    message: 'Error in find',
+                })
+            })
+    })
+})
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
